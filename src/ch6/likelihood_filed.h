@@ -35,6 +35,7 @@ class LikelihoodField {
 
     /// 使用高斯牛顿法配准
     bool AlignGaussNewton(SE2& init_pose);
+    bool AlignGaussNewtonMT(SE2& init_pose);
 
     /**
      * 使用g2o配准

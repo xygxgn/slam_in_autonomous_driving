@@ -8,6 +8,7 @@
 #include "ch6/icp_2d.h"
 #include "ch6/lidar_2d_utils.h"
 #include "common/io_utils.h"
+#include "common/sys_utils.h"
 
 DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor1.bag", "数据包路径");
 DEFINE_string(method, "point2point", "2d icp方法：point2point/point2plane");
@@ -40,9 +41,19 @@ int main(int argc, char** argv) {
 
                              SE2 pose;
                              if (fLS::FLAGS_method == "point2point") {
-                                 icp.AlignGaussNewton(pose); // AlignGaussNewtonMT
+                                 sad::evaluate_and_call(
+                                     [&]() {
+                                        icp.AlignGaussNewton(pose); // AlignGaussNewtonMT
+                                     }
+                                 );
+                                //  icp.AlignGaussNewton(pose); // AlignGaussNewtonMT
                              } else if (fLS::FLAGS_method == "point2plane") {
-                                 icp.AlignGaussNewtonPoint2Plane(pose); // AlignGaussNewtonPoint2PlaneMT
+                                sad::evaluate_and_call(
+                                    [&]() {
+                                       icp.AlignGaussNewtonPoint2Plane(pose); // AlignGaussNewtonPoint2PlaneMT
+                                    }
+                                );
+                                //  icp.AlignGaussNewtonPoint2Plane(pose); // AlignGaussNewtonPoint2PlaneMT
                              }
 
                              cv::Mat image;

@@ -7,6 +7,7 @@
 
 #include "ch6/lidar_2d_utils.h"
 #include "common/io_utils.h"
+#include "common/sys_utils.h"
 
 DEFINE_string(bag_path, "./dataset/sad/2dmapping/test_2d_lidar.bag", "数据包路径");
 
@@ -23,7 +24,12 @@ int main(int argc, char** argv) {
         .AddScan2DHandle("/pavo_scan_bottom",
                          [](Scan2d::Ptr scan) {
                              cv::Mat image;
-                             sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0)); // Visualize2DScanMT
+                             sad::evaluate_and_call(
+                                 [&]() {
+                                     sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0)); // Visualize2DScanMT
+                                 }
+                             );
+                             //  sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0)); // Visualize2DScanMT
                              cv::imshow("scan", image);
                              cv::waitKey(20);
                              return true;

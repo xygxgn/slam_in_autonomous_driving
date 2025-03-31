@@ -49,7 +49,6 @@ void Visualize2DScanMT(Scan2d::Ptr scan, const SE2& pose, cv::Mat& image, const 
         image = cv::Mat(image_size, image_size, CV_8UC3, cv::Vec3b(255, 255, 255));
     }
 
-    std::mutex mtx;
     std::vector<int> index(scan->ranges.size());
     std::iota(index.begin(), index.end(), 0);
 
@@ -71,7 +70,6 @@ void Visualize2DScanMT(Scan2d::Ptr scan, const SE2& pose, cv::Mat& image, const 
         int image_x = int(psubmap[0] * resolution + image_size / 2);
         int image_y = int(psubmap[1] * resolution + image_size / 2);
         if (image_x >= 0 && image_x < image.cols && image_y >= 0 && image_y < image.rows) {
-            std::lock_guard<std::mutex> locker(mtx);
             image.at<cv::Vec3b>(image_y, image_x) = cv::Vec3b(color[0], color[1], color[2]);
         }
     });

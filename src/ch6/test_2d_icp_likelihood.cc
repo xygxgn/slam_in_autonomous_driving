@@ -8,6 +8,7 @@
 #include "ch6/lidar_2d_utils.h"
 #include "ch6/likelihood_filed.h"
 #include "common/io_utils.h"
+#include "common/sys_utils.h"
 
 DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor1.bag", "数据包路径");
 DEFINE_string(method, "gauss-newton", "gauss-newton/g2o");
@@ -41,7 +42,12 @@ int main(int argc, char** argv) {
                 lf.SetSourceScan(current_scan);
 
                 if (FLAGS_method == "gauss-newton") {
-                    lf.AlignGaussNewton(pose);
+                    sad::evaluate_and_call(
+                        [&]() {
+                            lf.AlignGaussNewton(pose); // AlignGaussNewtonMT
+                        }
+                    );
+                    // lf.AlignGaussNewton(pose); // AlignGaussNewtonMT
                 } else if (FLAGS_method == "g2o") {
                     lf.AlignG2O(pose);
                 }

@@ -15,6 +15,7 @@
 #include <g2o/core/sparse_optimizer.h>
 #include <g2o/solvers/cholmod/linear_solver_cholmod.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
+#include <execution>
 
 namespace sad {
 
@@ -110,6 +111,89 @@ bool LikelihoodField::AlignGaussNewton(SE2& init_pose) {
                 has_outside_pts_ = true;
             }
         }
+
+        if (effective_num < min_effect_pts) {
+            return false;
+        }
+
+        // solve for dx
+        Vec3d dx = H.ldlt().solve(b);
+        if (isnan(dx[0])) {
+            break;
+        }
+
+        cost /= effective_num;
+        if (iter > 0 && cost >= lastCost) {
+            break;
+        }
+
+        LOG(INFO) << "iter " << iter << " cost = " << cost << ", effect num: " << effective_num;
+
+        current_pose.translation() += dx.head<2>();
+        current_pose.so2() = current_pose.so2() * SO2::exp(dx[2]);
+        lastCost = cost;
+    }
+
+    init_pose = current_pose;
+    return true;
+}
+
+bool LikelihoodField::AlignGaussNewtonMT(SE2& init_pose) {
+    int iterations = 10;
+    double cost = 0, lastCost = 0;
+    SE2 current_pose = init_pose;
+    const int min_effect_pts = 20;  // 最小有效点数
+    const int image_boarder = 20;   // 预留图像边界
+
+    has_outside_pts_ = false;
+    for (int iter = 0; iter < iterations; ++iter) {
+        Mat3d H = Mat3d::Zero();
+        Vec3d b = Vec3d::Zero();
+        cost = 0;
+
+        std::mutex mtx;
+        int effective_num = 0;  // 有效点数
+
+        std::vector<int> index(source_->ranges.size());
+        std::iota(index.begin(), index.end(), 0);
+
+        std::for_each(std::execution::par_unseq, index.begin(), index.end(), [&](int i) {
+            float r = source_->ranges[i];
+            if (r < source_->range_min || r > source_->range_max) {
+                return;
+            }
+
+            float angle = source_->angle_min + i * source_->angle_increment;
+            if (angle < source_->angle_min + 30 * M_PI / 180.0 || angle > source_->angle_max - 30 * M_PI / 180.0) {
+                return;
+            }
+            float theta = current_pose.so2().log();
+            Vec2d pw = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
+
+            // 在field中的图像坐标
+            Vec2i pf = (pw * resolution_ + Vec2d(500, 500)).cast<int>();
+
+            if (pf[0] >= image_boarder && pf[0] < field_.cols - image_boarder && pf[1] >= image_boarder &&
+                pf[1] < field_.rows - image_boarder) {
+                // 图像梯度
+                float dx = 0.5 * (field_.at<float>(pf[1], pf[0] + 1) - field_.at<float>(pf[1], pf[0] - 1));
+                float dy = 0.5 * (field_.at<float>(pf[1] + 1, pf[0]) - field_.at<float>(pf[1] - 1, pf[0]));
+                Vec3d J;
+                J << resolution_ * dx, resolution_ * dy,
+                    -resolution_ * dx * r * std::sin(angle + theta) + resolution_ * dy * r * std::cos(angle + theta);
+                float e = field_.at<float>(pf[1], pf[0]);
+
+                std::lock_guard<std::mutex> locker(mtx);
+                effective_num++;
+                H += J * J.transpose();
+                b += -J * e;
+                cost += e * e;
+            } else {
+                std::lock_guard<std::mutex> locker(mtx);
+                has_outside_pts_ = true;
+            }
+
+        });
 
         if (effective_num < min_effect_pts) {
             return false;

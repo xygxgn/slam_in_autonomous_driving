@@ -40,9 +40,9 @@ int main(int argc, char** argv) {
 
                              SE2 pose;
                              if (fLS::FLAGS_method == "point2point") {
-                                 icp.AlignGaussNewton(pose);
+                                 icp.AlignGaussNewton(pose); // AlignGaussNewtonMT
                              } else if (fLS::FLAGS_method == "point2plane") {
-                                 icp.AlignGaussNewtonPoint2Plane(pose);
+                                 icp.AlignGaussNewtonPoint2Plane(pose); // AlignGaussNewtonPoint2PlaneMT
                              }
 
                              cv::Mat image;

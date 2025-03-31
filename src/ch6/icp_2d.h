@@ -33,9 +33,11 @@ class Icp2d {
 
     /// 使用高斯牛顿法进行配准
     bool AlignGaussNewton(SE2& init_pose);
+    bool AlignGaussNewtonMT(SE2& init_pose);
 
     /// 使用高斯牛顿法进行配准, Point-to-Plane
     bool AlignGaussNewtonPoint2Plane(SE2& init_pose);
+    bool AlignGaussNewtonPoint2PlaneMT(SE2& init_pose);
 
    private:
     // 建立目标点云的Kdtree

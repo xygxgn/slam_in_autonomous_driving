@@ -55,7 +55,11 @@ void GenerateBEVImage(PointCloudType::Ptr cloud) {
         image.at<cv::Vec3b>(y, x) = cv::Vec3b(227, 143, 79);
     }
 
-    cv::imwrite("./bev.png", image);
+    // 沿Y轴翻转，因为我们希望Z轴朝上时Y朝上
+    cv::Mat image_flipped;
+    cv::flip(image, image_flipped, 0);
+
+    cv::imwrite("./bev.png", image_flipped);
 }
 
 int main(int argc, char** argv) {

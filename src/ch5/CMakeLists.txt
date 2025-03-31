@@ -1,3 +1,6 @@
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
+
 add_executable(point_cloud_load_and_vis point_cloud_load_and_vis.cc)
 target_link_libraries(point_cloud_load_and_vis
         ${PCL_LIBRARIES}
@@ -42,5 +45,5 @@ ADD_EXECUTABLE(test_nn test_nn.cc)
 ADD_TEST(test_nn test_bfnn)
 
 target_link_libraries(test_nn
-        gtest pthread glog gflags ${PROJECT_NAME}.ch5 ${PROJECT_NAME}.common ${PCL_LIBRARIES} tbb
+        ${GTEST_BOTH_LIBRARIES} pthread glog gflags ${PROJECT_NAME}.ch5 ${PROJECT_NAME}.common ${PCL_LIBRARIES} tbb
         )

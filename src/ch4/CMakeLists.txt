@@ -1,3 +1,6 @@
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIRS})
+
 add_library(${PROJECT_NAME}.ch4
         gins_pre_integ.cc
         imu_preintegration.cc
@@ -8,7 +11,7 @@ ADD_EXECUTABLE(test_preintegration test_preintegration.cc)
 ADD_TEST(test_preintegration test_preintegration)
 
 target_link_libraries(test_preintegration
-        gtest pthread glog gflags ${PROJECT_NAME}.ch4 ${PROJECT_NAME}.ch3 ${PROJECT_NAME}.common
+        ${GTEST_BOTH_LIBRARIES} pthread glog gflags ${PROJECT_NAME}.ch4 ${PROJECT_NAME}.ch3 ${PROJECT_NAME}.common
         )
 
 add_executable(run_gins_pre_integ run_gins_pre_integ.cc)

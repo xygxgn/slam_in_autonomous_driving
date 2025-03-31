@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
         .AddScan2DHandle("/pavo_scan_bottom",
                          [](Scan2d::Ptr scan) {
                              cv::Mat image;
-                             sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0));
+                             sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0)); // Visualize2DScanMT
                              cv::imshow("scan", image);
                              cv::waitKey(20);
                              return true;

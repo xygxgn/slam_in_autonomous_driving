@@ -231,7 +231,7 @@ TEST(CH5_TEST, KDTREE_KNN) {
     std::vector<std::pair<size_t, size_t>> true_matches;
     sad::bfnn_cloud_mt_k(first, second, true_matches);
 
-    // 对第2个点云执行knn
+    // 对第2个点云执行knn (ann)
     std::vector<std::pair<size_t, size_t>> matches;
     sad::evaluate_and_call([&first, &second, &kdtree, &matches]() { kdtree.GetClosestPointMT(second, matches, 5); },
                            "Kd Tree 5NN 多线程", 1);

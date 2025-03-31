@@ -7,6 +7,7 @@
 
 namespace sad {
 
+/* 单线程 点到点云 暴力匹配 最近邻点 寻找point在cloud1中的最近邻 */
 int bfnn_point(CloudPtr cloud, const Vec3f& point) {
     return std::min_element(cloud->points.begin(), cloud->points.end(),
                             [&point](const PointType& pt1, const PointType& pt2) -> bool {
@@ -16,6 +17,7 @@ int bfnn_point(CloudPtr cloud, const Vec3f& point) {
            cloud->points.begin();
 }
 
+/* 单线程 点<==>点云 暴力匹配 k近邻点 寻找point在cloud1中的k近邻 */
 std::vector<int> bfnn_point_k(CloudPtr cloud, const Vec3f& point, int k) {
     struct IndexAndDis {
         IndexAndDis() {}
@@ -36,10 +38,12 @@ std::vector<int> bfnn_point_k(CloudPtr cloud, const Vec3f& point, int k) {
     return ret;
 }
 
+/* 多线程 点云<==>点云 暴力匹配 最近邻点 寻找cloud2中所有点在cloud1中的k近邻 */
 void bfnn_cloud_mt(CloudPtr cloud1, CloudPtr cloud2, std::vector<std::pair<size_t, size_t>>& matches) {
     // 先生成索引
     std::vector<size_t> index(cloud2->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
 
     // 并行化for_each
     matches.resize(index.size());
@@ -49,10 +53,12 @@ void bfnn_cloud_mt(CloudPtr cloud1, CloudPtr cloud2, std::vector<std::pair<size_
     });
 }
 
+/* 单线程 点云<==>点云 暴力匹配 最近邻点 寻找cloud2中所有点在cloud1中的最近邻 */
 void bfnn_cloud(CloudPtr cloud1, CloudPtr cloud2, std::vector<std::pair<size_t, size_t>>& matches) {
     // 单线程版本
     std::vector<size_t> index(cloud2->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
 
     matches.resize(index.size());
     std::for_each(std::execution::seq, index.begin(), index.end(), [&](auto idx) {
@@ -61,10 +67,12 @@ void bfnn_cloud(CloudPtr cloud1, CloudPtr cloud2, std::vector<std::pair<size_t, 
     });
 }
 
+/* 多线程 点云<==>点云 暴力匹配 k近邻点 寻找cloud2中所有点在cloud1中的k近邻 */
 void bfnn_cloud_mt_k(CloudPtr cloud1, CloudPtr cloud2, std::vector<std::pair<size_t, size_t>>& matches, int k) {
     // 先生成索引
     std::vector<size_t> index(cloud2->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
 
     // 并行化for_each
     matches.resize(index.size() * k);

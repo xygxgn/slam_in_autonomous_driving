@@ -24,9 +24,10 @@ bool OctoTree::BuildTree(const CloudPtr &cloud) {
     Reset();
 
     IndexVec idx(cloud->size());
-    for (int i = 0; i < cloud->points.size(); ++i) {
-        idx[i] = i;
-    }
+    // for (int i = 0; i < cloud->points.size(); ++i) {
+    //     idx[i] = i;
+    // }
+    std::iota(idx.begin(), idx.end(), 0);
 
     // 生成根节点的边界框
     root_->box_ = ComputeBoundingBox();
@@ -58,6 +59,7 @@ void OctoTree::Insert(const IndexVec &points, OctoTreeNode *node) {
     }
 }
 
+/* 创建 8 叉子树，并将对 parent_idx 分割的结果保存在 children_idx 中 */
 void OctoTree::ExpandNode(OctoTreeNode *node, const IndexVec &parent_idx, std::vector<IndexVec> &children_idx) {
     children_idx.resize(8);
     for (int i = 0; i < 8; ++i) {
@@ -105,6 +107,7 @@ void OctoTree::ExpandNode(OctoTreeNode *node, const IndexVec &parent_idx, std::v
     }
 }
 
+/* 计算点云的外接立方体 */
 Box3D OctoTree::ComputeBoundingBox() {
     float min_values[3] = {std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max()};
     float max_values[3] = {-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max()};
@@ -193,6 +196,7 @@ void OctoTree::Knn(const Vec3f &pt, OctoTreeNode *node, std::priority_queue<Node
         return;
     }
 
+    /* 找到下一个要搜索的子树 */
     // 看pt落在哪一格，优先搜索pt所在的子树
     // 然后再看其他子树是否需要搜索
     // 如果pt在外边，优先搜索最近的子树
@@ -211,9 +215,11 @@ void OctoTree::Knn(const Vec3f &pt, OctoTreeNode *node, std::priority_queue<Node
         }
     }
 
+    /* 在下一个要搜索的子树中进行搜素 */
     // 先检查idx_child
     Knn(pt, node->children[idx_child], knn_result);
 
+    /* 判断是否需要在其他子树中进行搜素 */
     // 再检查其他的
     for (int i = 0; i < 8; ++i) {
         if (i == idx_child) {
@@ -226,6 +232,7 @@ void OctoTree::Knn(const Vec3f &pt, OctoTreeNode *node, std::priority_queue<Node
     }
 }
 
+/* 判断当前叶子节点对应的点是否能作为k近邻 */
 void OctoTree::ComputeDisForLeaf(const Vec3f &pt, OctoTreeNode *node,
                                  std::priority_queue<NodeAndDistanceOcto> &knn_result) const {
     // 比较与结果队列的差异，如果优于最远距离，则插入
@@ -242,6 +249,7 @@ void OctoTree::ComputeDisForLeaf(const Vec3f &pt, OctoTreeNode *node,
     }
 }
 
+/* 判断是否需要到其他立方体中继续搜索 */
 bool OctoTree::NeedExpand(const Vec3f &pt, OctoTreeNode *node,
                           std::priority_queue<NodeAndDistanceOcto> &knn_result) const {
     if (knn_result.size() < k_) {

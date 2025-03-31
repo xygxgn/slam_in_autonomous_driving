@@ -16,8 +16,8 @@
 namespace sad {
 
 /**
- * 栅格法最近邻
- * @tparam dim 模板参数，使用2D或3D栅格
+ * 栅格/体素法最近邻
+ * @tparam dim 模板参数，使用2D栅格/3D体素
  */
 template <int dim>
 class GridNN {
@@ -56,7 +56,7 @@ class GridNN {
         GenerateNearbyGrids();
     }
 
-    /// 设置点云，建立栅格
+    /// 设置点云，建立栅格/体素
     bool SetPointCloud(CloudPtr cloud);
 
     /// 获取最近邻
@@ -77,17 +77,19 @@ class GridNN {
     float inv_resolution_ = 10.0;  // 分辨率倒数
 
     NearbyType nearby_type_ = NearbyType::NEARBY4;
-    std::unordered_map<KeyType, std::vector<size_t>, hash_vec<dim>> grids_;  //  栅格数据
+    std::unordered_map<KeyType, std::vector<size_t>, hash_vec<dim>> grids_;  //  栅格/体素数据
     CloudPtr cloud_;
 
-    std::vector<KeyType> nearby_grids_;  // 附近的栅格
+    std::vector<KeyType> nearby_grids_;  // 附近的栅格/体素
 };
 
 // 实现
+/* 将点云数据转化为栅格/体素数据，每个点归类到对应的栅格/体素中 */
 template <int dim>
 bool GridNN<dim>::SetPointCloud(CloudPtr cloud) {
     std::vector<size_t> index(cloud->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
 
     std::for_each(index.begin(), index.end(), [&cloud, this](const size_t& idx) {
         auto pt = cloud->points[idx];
@@ -104,6 +106,7 @@ bool GridNN<dim>::SetPointCloud(CloudPtr cloud) {
     return true;
 }
 
+/* 寻找点云中的点在栅格/体素中的位置 */
 template <int dim>
 Eigen::Matrix<int, dim, 1> GridNN<dim>::Pos2Grid(const Eigen::Matrix<float, dim, 1>& pt) {
     return pt.array().template round().template cast<int>();
@@ -114,6 +117,7 @@ Eigen::Matrix<int, dim, 1> GridNN<dim>::Pos2Grid(const Eigen::Matrix<float, dim,
     // return ret;
 }
 
+/* 获取临近栅格 2d */
 template <>
 void GridNN<2>::GenerateNearbyGrids() {
     if (nearby_type_ == NearbyType::CENTER) {
@@ -128,6 +132,7 @@ void GridNN<2>::GenerateNearbyGrids() {
     }
 }
 
+/* 获取临近体素 3d */
 template <>
 void GridNN<3>::GenerateNearbyGrids() {
     if (nearby_type_ == NearbyType::CENTER) {
@@ -138,12 +143,14 @@ void GridNN<3>::GenerateNearbyGrids() {
     }
 }
 
+/* 寻找某一点的最近邻 */
 template <int dim>
 bool GridNN<dim>::GetClosestPoint(const PointType& pt, PointType& closest_pt, size_t& idx) {
-    // 在pt栅格周边寻找最近邻
+    // 在pt栅格/体素周边寻找最近邻
     std::vector<size_t> idx_to_check;
     auto key = Pos2Grid(ToEigen<float, dim>(pt));
 
+    /* 寻找邻居栅格/体素中的所有点 */
     std::for_each(nearby_grids_.begin(), nearby_grids_.end(), [&key, &idx_to_check, this](const KeyType& delta) {
         auto dkey = key + delta;
         auto iter = grids_.find(dkey);
@@ -164,6 +171,7 @@ bool GridNN<dim>::GetClosestPoint(const PointType& pt, PointType& closest_pt, si
         nearby_idx.emplace_back(idx);
     }
 
+    /* 在邻居栅格/体素中的所有点中寻找最近点 */
     size_t closest_point_idx = bfnn_point(nearby_cloud, ToVec3f(pt));
     idx = nearby_idx.at(closest_point_idx);
     closest_pt = cloud_->points[idx];
@@ -171,15 +179,17 @@ bool GridNN<dim>::GetClosestPoint(const PointType& pt, PointType& closest_pt, si
     return true;
 }
 
+/* 单线程 寻找待查询点云中所有点的最近邻 */
 template <int dim>
 bool GridNN<dim>::GetClosestPointForCloud(CloudPtr ref, CloudPtr query,
                                           std::vector<std::pair<size_t, size_t>>& matches) {
     matches.clear();
     std::vector<size_t> index(query->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
     std::for_each(index.begin(), index.end(), [this, &matches, &query](const size_t& idx) {
-        PointType cp;
-        size_t cp_idx;
+        PointType cp; // 最近点坐标
+        size_t cp_idx; // 最近点的索引
         if (GetClosestPoint(query->points[idx], cp, cp_idx)) {
             matches.emplace_back(cp_idx, idx);
         }
@@ -188,18 +198,20 @@ bool GridNN<dim>::GetClosestPointForCloud(CloudPtr ref, CloudPtr query,
     return true;
 }
 
+/* 多线程 寻找待查询点云中所有点的最近邻 */
 template <int dim>
 bool GridNN<dim>::GetClosestPointForCloudMT(CloudPtr ref, CloudPtr query,
                                             std::vector<std::pair<size_t, size_t>>& matches) {
     matches.clear();
     // 与串行版本基本一样，但matches需要预先生成，匹配失败时填入非法匹配
     std::vector<size_t> index(query->size());
-    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    // std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+    std::iota(index.begin(), index.end(), 0);
     matches.resize(index.size());
 
     std::for_each(std::execution::par_unseq, index.begin(), index.end(), [this, &matches, &query](const size_t& idx) {
-        PointType cp;
-        size_t cp_idx;
+        PointType cp; // 最近点坐标
+        size_t cp_idx; // 最近点的索引
         if (GetClosestPoint(query->points[idx], cp, cp_idx)) {
             matches[idx] = {cp_idx, idx};
         } else {

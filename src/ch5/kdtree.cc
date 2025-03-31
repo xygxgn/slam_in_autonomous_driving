@@ -26,9 +26,10 @@ bool KdTree::BuildTree(const CloudPtr &cloud) {
     Reset();
 
     IndexVec idx(cloud->size());
-    for (int i = 0; i < cloud->points.size(); ++i) {
-        idx[i] = i;
-    }
+    // for (int i = 0; i < cloud->points.size(); ++i) {
+    //     idx[i] = i;
+    // }
+    std::iota(idx.begin(), idx.end(), 0);
 
     Insert(idx, root_.get());
     return true;
@@ -66,6 +67,7 @@ void KdTree::Insert(const IndexVec &points, KdTreeNode *node) {
     create_if_not_empty(node->right_, right);
 }
 
+/* 单线程 点<==>点云 在 KD-Tree 中寻找某一点的k近邻点 */
 bool KdTree::GetClosestPoint(const PointType &pt, std::vector<int> &closest_idx, int k) {
     if (k > size_) {
         LOG(ERROR) << "cannot set k larger than cloud size: " << k << ", " << size_;
@@ -73,6 +75,8 @@ bool KdTree::GetClosestPoint(const PointType &pt, std::vector<int> &closest_idx,
     }
     k_ = k;
 
+    /* 优先队列 大根堆 */
+    // std::priority_queue<NodeAndDistance, std::vector<NodeAndDistance>, std::less<NodeAndDistance>> knn_result;
     std::priority_queue<NodeAndDistance> knn_result;
     Knn(ToVec3f(pt), root_.get(), knn_result);
 
@@ -86,14 +90,16 @@ bool KdTree::GetClosestPoint(const PointType &pt, std::vector<int> &closest_idx,
     return true;
 }
 
+/* 多线程 点<==>点云 在 KD-Tree 中寻找点云中所有点的k近邻点 */
 bool KdTree::GetClosestPointMT(const CloudPtr &cloud, std::vector<std::pair<size_t, size_t>> &matches, int k) {
     matches.resize(cloud->size() * k);
 
     // 索引
     std::vector<int> index(cloud->size());
-    for (int i = 0; i < cloud->points.size(); ++i) {
-        index[i] = i;
-    }
+    // for (int i = 0; i < cloud->points.size(); ++i) {
+    //     index[i] = i;
+    // }
+    std::iota(index.begin(), index.end(), 0);
 
     std::for_each(std::execution::par_unseq, index.begin(), index.end(), [this, &cloud, &matches, &k](int idx) {
         std::vector<int> closest_idx;
@@ -135,6 +141,7 @@ void KdTree::Knn(const Vec3f &pt, KdTreeNode *node, std::priority_queue<NodeAndD
     }
 }
 
+/* 判断是否需要到另一侧继续搜索 */
 bool KdTree::NeedExpand(const Vec3f &pt, KdTreeNode *node, std::priority_queue<NodeAndDistance> &knn_result) const {
     if (knn_result.size() < k_) {
         return true;
@@ -158,6 +165,7 @@ bool KdTree::NeedExpand(const Vec3f &pt, KdTreeNode *node, std::priority_queue<N
     }
 }
 
+/* 判断当前叶子节点对应的点是否能作为k近邻 */
 void KdTree::ComputeDisForLeaf(const Vec3f &pt, KdTreeNode *node,
                                std::priority_queue<NodeAndDistance> &knn_result) const {
     // 比较与结果队列的差异，如果优于最远距离，则插入
@@ -174,6 +182,7 @@ void KdTree::ComputeDisForLeaf(const Vec3f &pt, KdTreeNode *node,
     }
 }
 
+/* 计算并保存当前的分割轴 axis 以及分割阈值 th ，并将分割结果保存在 left 和 right 中 */
 bool KdTree::FindSplitAxisAndThresh(const IndexVec &point_idx, int &axis, float &th, IndexVec &left, IndexVec &right) {
     // 计算三个轴上的散布情况，我们使用math_utils.h里的函数
     Vec3f var;

@@ -39,7 +39,7 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan) {
         current_frame_->pose_submap_ = last_frame_->pose_submap_;
     }
 
-    // 利用scan matching来匹配地图
+    // 利用scan matching来匹配地图，计算当前帧相对于世界坐标系的位姿
     if (!first_scan_) {
         // 第一帧无法匹配，直接加入到occupancy map
         current_submap_->MatchScan(current_frame_);
@@ -59,7 +59,7 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan) {
         }
 
         if (current_submap_->HasOutsidePoints() || (current_submap_->NumFrames()) > 50) {
-            /// 走出了submap或者单个submap中的关键帧较多
+            /// 存在submap外的点或者单个submap中的关键帧较多
             ExpandSubmap();
         }
     }
@@ -87,7 +87,8 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan) {
     cv::waitKey(10);
 
     if (last_frame_) {
-        motion_guess_ = last_frame_->pose_.inverse() * current_frame_->pose_;
+        /* 通过当前帧相对于上一帧的位姿来预测下一帧相对于当前帧的位姿 */
+        motion_guess_ = last_frame_->pose_.inverse() * current_frame_->pose_; // current_frame to last_frame
     }
 
     last_frame_ = current_frame_;
@@ -100,6 +101,7 @@ bool Mapping2D::IsKeyFrame() {
         return true;
     }
 
+    /* 当前帧到上一关键帧的角度或距离足够大时判定当前帧为关键帧 */
     SE2 delta_pose = last_keyframe_->pose_.inverse() * current_frame_->pose_;
     if (delta_pose.translation().norm() > keyframe_pos_th_ || fabs(delta_pose.so2().log()) > keyframe_ang_th_) {
         return true;
@@ -127,7 +129,8 @@ void Mapping2D::ExpandSubmap() {
     // debug
     cv::imwrite("./data/ch6/submap_" + std::to_string(last_submap->GetId()) + ".png",
                 last_submap->GetOccuMap().GetOccupancyGridBlackWhite());
-
+    
+    /* 创建子地图并设置子地图的位姿 */
     current_submap_ = std::make_shared<Submap>(current_frame_->pose_);
     current_frame_->pose_submap_ = SE2();  // 这个归零
 

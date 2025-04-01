@@ -9,7 +9,7 @@ namespace sad {
 
 void Submap::SetOccuFromOtherSubmap(std::shared_ptr<Submap> other) {
     auto frames_in_other = other->GetFrames();
-    // 取最近10个帧
+    // 取最近10个帧来生成子地图的初始占用栅格地图
     for (size_t i = frames_in_other.size() - 10; i < frames_in_other.size(); ++i) {
         if (i > 0) {
             occu_map_.AddLidarFrame(frames_in_other[i]);
@@ -20,7 +20,7 @@ void Submap::SetOccuFromOtherSubmap(std::shared_ptr<Submap> other) {
 
 bool Submap::MatchScan(std::shared_ptr<Frame> frame) {
     field_.SetSourceScan(frame->scan_);
-    field_.AlignG2O(frame->pose_submap_);
+    field_.AlignG2O(frame->pose_submap_); // AlignGaussNewton
     frame->pose_ = pose_ * frame->pose_submap_;  // T_w_c = T_w_s * T_s_c
 
     return true;

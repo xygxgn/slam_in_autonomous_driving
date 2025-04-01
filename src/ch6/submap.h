@@ -24,7 +24,7 @@ class Submap {
         field_.SetPose(pose_);
     }
 
-    /// 把另一个submap中的占据栅格复制到本地图中
+    /// 利用另一个submap中的部分关键帧数据来生成当前submap的占据栅格地图
     void SetOccuFromOtherSubmap(std::shared_ptr<Submap> other);
 
     /// 将frame与本submap进行匹配，计算frame->pose
@@ -56,7 +56,7 @@ class Submap {
     SE2 GetPose() const { return pose_; }
 
    private:
-    SE2 pose_;  // submap的pose, Tws
+    SE2 pose_;  // submap in world, T_w_s 在创建子地图时设置
     size_t id_ = 0;
 
     std::vector<std::shared_ptr<Frame>> frames_;  // 一个submap中的关键帧

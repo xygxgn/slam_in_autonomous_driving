@@ -27,8 +27,8 @@ struct Frame {
     size_t keyframe_id_ = 0;      // 关键帧 id
     double timestamp_ = 0;        // 时间戳，一般不用
     Scan2d::Ptr scan_ = nullptr;  // 激光扫描数据
-    SE2 pose_;                    // 位姿，world to scan, T_w_c
-    SE2 pose_submap_;             // 位姿，submap to scan, T_s_c
+    SE2 pose_;                    // scan in world，scan to world, T_w_c
+    SE2 pose_submap_;             // scan in submap，scan to submap, T_s_c
 };
 
 }  // namespace sad

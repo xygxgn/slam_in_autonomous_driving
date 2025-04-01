@@ -24,7 +24,7 @@ void OccupancyMap::BuildModel() {
             pt.dy_ = y;
             pt.range_ = sqrt(x * x + y * y) * inv_resolution_;
             pt.angle_ = std::atan2(y, x);
-            pt.angle_ = pt.angle_ > M_PI ? pt.angle_ - 2 * M_PI : pt.angle_;  // limit in 2pi
+            pt.angle_ = pt.angle_ > M_PI ? pt.angle_ - 2 * M_PI : pt.angle_;  // limit in [-pi, pi]
             model_.push_back(pt);
         }
     }
@@ -57,16 +57,16 @@ double OccupancyMap::FindRangeInAngle(double angle, Scan2d::Ptr scan) {
         double real_angle1 = scan->angle_min + scan->angle_increment * angle_index;
         double real_angle2 = scan->angle_min + scan->angle_increment * angle_index_p;
 
-        if (range2 < scan->range_min || range2 > scan->range_max) {
+        if (range2 < scan->range_min || range2 > scan->range_max) { // range2 越界处理
             range = range1;
             real_angle = real_angle1;
-        } else if (range1 < scan->range_min || range1 > scan->range_max) {
+        } else if (range1 < scan->range_min || range1 > scan->range_max) { // range1 越界处理
             range = range2;
             real_angle = real_angle2;
-        } else if (std::fabs(range1 - range2) > 0.3) {
+        } else if (std::fabs(range1 - range2) > 0.3) { // range1 和 range2 相差较大时选择 angle 更靠近的那个作为 real_angle 以及相应的 range
             range = s > 0.5 ? range2 : range1;
             real_angle = s > 0.5 ? real_angle2 : real_angle1;
-        } else {
+        } else { // range1 和 range2 相差较小时进行插值
             range = range1 * (1 - s) + range2 * s;
         }
     }
@@ -78,7 +78,7 @@ void OccupancyMap::AddLidarFrame(std::shared_ptr<Frame> frame, GridMethod method
     
     // 此处不能直接使用frame->pose_submap_，因为frame可能来自上一个地图
     // 此时frame->pose_submap_还未更新，依旧是frame在上一个地图中的pose
-    SE2 pose_in_submap = pose_.inverse() * frame->pose_;
+    SE2 pose_in_submap = pose_.inverse() * frame->pose_; // T_w_s^-1 * T_w_c = T_s_c
     float theta = pose_in_submap.so2().log();
     has_outside_pts_ = false;
 
@@ -100,8 +100,8 @@ void OccupancyMap::AddLidarFrame(std::shared_ptr<Frame> frame, GridMethod method
     if (method == GridMethod::MODEL_POINTS) {
         // 遍历模板，生成白色点
         std::for_each(std::execution::par_unseq, model_.begin(), model_.end(), [&](const Model2DPoint& pt) {
-            Vec2i pos_in_image = World2Image(frame->pose_.translation());
-            Vec2i pw = pos_in_image + Vec2i(pt.dx_, pt.dy_);  // submap下
+            Vec2i pos_in_image = World2Image(frame->pose_.translation()); // scan 在图像中的位置
+            Vec2i pw = pos_in_image + Vec2i(pt.dx_, pt.dy_);  // 模板中的点在图像中的位置
 
             if (pt.range_ < closest_th_) {
                 // 小距离内认为无物体

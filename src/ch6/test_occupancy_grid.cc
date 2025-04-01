@@ -11,7 +11,7 @@
 #include "common/sys_utils.h"
 
 DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor1.bag", "数据包路径");
-DEFINE_string(method, "model/bresenham", "填充算法：model/bresenham");
+DEFINE_string(method, "model", "填充算法：model/bresenham");
 
 /// 测试2D似然场法的ICP
 

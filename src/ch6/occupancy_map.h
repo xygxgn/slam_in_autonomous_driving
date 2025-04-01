@@ -74,7 +74,7 @@ class OccupancyMap {
 
     cv::Mat occupancy_grid_;  // 8bit 占据栅格图像
 
-    SE2 pose_;  // T_W_S
+    SE2 pose_;  // submap to world, T_W_S
     Vec2d center_image_ = Vec2d(image_size_ / 2, image_size_ / 2);
 
     bool has_outside_pts_ = false;  // 标注栅格化过程中是否有落在外部的点

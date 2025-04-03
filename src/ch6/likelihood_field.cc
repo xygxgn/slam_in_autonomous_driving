@@ -144,18 +144,19 @@ bool LikelihoodField::AlignGaussNewtonMT(SE2& init_pose) {
     SE2 current_pose = init_pose;
     const int min_effect_pts = 20;  // 最小有效点数
     const int image_boarder = 20;   // 预留图像边界
+    int effective_num = 0; // 有效点数
+
+    std::vector<int> index(source_->ranges.size());
+    std::iota(index.begin(), index.end(), 0);
+
+    std::vector<bool> effect_pts(index.size(), false);
+    std::vector<Eigen::Matrix<double, 1, 3>> jacobians(index.size());
+    std::vector<double> errors(index.size());
 
     has_outside_pts_ = false;
     for (int iter = 0; iter < iterations; ++iter) {
         Mat3d H = Mat3d::Zero();
         Vec3d b = Vec3d::Zero();
-        cost = 0;
-
-        std::mutex mtx;
-        int effective_num = 0;  // 有效点数
-
-        std::vector<int> index(source_->ranges.size());
-        std::iota(index.begin(), index.end(), 0);
 
         std::for_each(std::execution::par_unseq, index.begin(), index.end(), [&](int i) {
             float r = source_->ranges[i];
@@ -178,26 +179,36 @@ bool LikelihoodField::AlignGaussNewtonMT(SE2& init_pose) {
                 // 图像梯度
                 float dx = 0.5 * (field_.at<float>(pf[1], pf[0] + 1) - field_.at<float>(pf[1], pf[0] - 1));
                 float dy = 0.5 * (field_.at<float>(pf[1] + 1, pf[0]) - field_.at<float>(pf[1] - 1, pf[0]));
-                Vec3d J;
-                J << resolution_ * dx, resolution_ * dy,
-                    -resolution_ * dx * r * std::sin(angle + theta) + resolution_ * dy * r * std::cos(angle + theta);
-                float e = field_.at<float>(pf[1], pf[0]);
-
-                std::lock_guard<std::mutex> locker(mtx);
-                effective_num++;
-                H += J * J.transpose();
-                b += -J * e;
-                cost += e * e;
+                jacobians[i] << resolution_ * dx, resolution_ * dy, -resolution_ * dx * r * std::sin(angle + theta) + resolution_ * dy * r * std::cos(angle + theta);
+                errors[i] = field_.at<float>(pf[1], pf[0]);
+                effect_pts[i] = true;
             } else {
-                std::lock_guard<std::mutex> locker(mtx);
                 has_outside_pts_ = true;
             }
-
         });
+
+        // 原则上可以用reduce并发，写起来比较麻烦，这里写成accumulate
+        cost = 0;
+        effective_num = 0;
+        auto H_and_b = std::accumulate(
+            index.begin(), index.end(), std::pair<Mat3d, Vec3d>(Mat3d::Zero(), Vec3d::Zero()),
+            [&jacobians, &errors, &effect_pts, &cost, &effective_num](const std::pair<Mat3d, Vec3d>& pre, int idx) -> std::pair<Mat3d, Vec3d> {
+                if (!effect_pts[idx]) {
+                    return pre;
+                } else {
+                    cost += errors[idx] * errors[idx];
+                    effective_num++;
+                    return std::pair<Mat3d, Vec3d>(pre.first + jacobians[idx].transpose() * jacobians[idx],
+                                                   pre.second - jacobians[idx].transpose() * errors[idx]);
+                }
+            });
 
         if (effective_num < min_effect_pts) {
             return false;
         }
+
+        H = H_and_b.first;
+        b = H_and_b.second;
 
         // solve for dx
         Vec3d dx = H.ldlt().solve(b);

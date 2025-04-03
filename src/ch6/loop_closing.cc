@@ -84,7 +84,7 @@ bool LoopClosing::DetectLoopCandidates() {
 
 void LoopClosing::MatchInHistorySubmaps() {
     // 我们先把要检查的scan, pose和submap存到离线文件, 把mr match调完了再实际上线
-    // current_frame_->Dump("./data/ch6/frame_" + std::to_string(current_frame_->id_) + ".txt");
+    current_frame_->Dump("./data/ch6/frame_" + std::to_string(current_frame_->id_) + ".txt");
 
     for (const size_t& can : current_candidates_) {
         auto mr = submap_to_field_.at(submaps_[can]);
@@ -191,7 +191,7 @@ void LoopClosing::Optimize() {
             loop_constraints_.at(ep.first).valid_ = true;
             inliers++;
         } else {
-            ep.second->setLevel(1);
+            ep.second->setLevel(1); // 设置边的level为1(在下次优化中不参与)，标记为无效
             LOG(INFO) << "loop from " << ep.first.first << " to " << ep.first.second
                       << " is invalid, chi2: " << ep.second->chi2();
             loop_constraints_.at(ep.first).valid_ = false;

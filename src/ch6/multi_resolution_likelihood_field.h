@@ -25,7 +25,7 @@ class MRLikelihoodField {
 
     MRLikelihoodField() { BuildModel(); }
 
-    /// 从占据栅格地图生成一个似然场地图
+    /// 通过一个占据栅格地图生成多尺度似然场地图
     void SetFieldImageFromOccuMap(const cv::Mat& occu_map);
 
     /// 使用g2o配准，内部调用不同层级的图像进行配准

@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
         sad::MRLikelihoodField mr_field;
         Vec2d center(submap_center_x, submap_center_y);
-        SE2 pose_submap(SO2::exp(theta), center);
+        SE2 pose_submap(SO2::exp(theta), center); // submap in world, T_w_s
 
         mr_field.SetPose(pose_submap);
         cv::Mat occu_map = cv::imread("./data/ch6/submap_" + std::to_string(submap_id) + ".png", cv::IMREAD_GRAYSCALE);
@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
 
         LOG(INFO) << "testing frame " << frame.id_ << " with " << submap_id;
 
-        auto init_pose = frame.pose_;
-        auto frame_pose_in_submap = pose_submap.inverse() * frame.pose_;
+        auto init_pose = frame.pose_; // scan in world, T_w_c
+        auto frame_pose_in_submap = pose_submap.inverse() * frame.pose_; // scan in submap, T_s_c = T_w_s^-1 * T_w_c
         bool align_success = mr_field.AlignG2O(frame_pose_in_submap);
 
         if (align_success) {

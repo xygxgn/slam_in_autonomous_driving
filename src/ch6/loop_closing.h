@@ -37,10 +37,10 @@ class LoopClosing {
 
     LoopClosing() { debug_fout_.open("./data/ch6/loops.txt"); }
 
-    /// 添加最近的submap，这个submap可能正在构建中
+    /// 添加最新的submap，这个submap可能正在构建中
     void AddNewSubmap(std::shared_ptr<Submap> submap);
 
-    /// 添加一个已经建完的submap，需要在AddNewSubmap函数之后调用
+    /// 添加已经建完的submap所对应的多尺度似然场地图，需要在AddNewSubmap函数之后调用
     void AddFinishedSubmap(std::shared_ptr<Submap> submap);
 
     /// 为新的frame进行回环检测，更新它的pose和submap的pose
@@ -52,7 +52,7 @@ class LoopClosing {
     bool HasNewLoops() const { return has_new_loops_; }
 
    private:
-    /// 检测当前帧与历史地图可能存在的回环
+    /// 检测当前帧与历史地图可能存在的回环，即检测与当前帧位置较近的历史子地图
     bool DetectLoopCandidates();
 
     /// 将当前帧与历史submap进行匹配

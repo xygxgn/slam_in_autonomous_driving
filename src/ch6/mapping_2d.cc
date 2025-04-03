@@ -29,9 +29,11 @@ bool Mapping2D::Init(bool with_loop_closing) {
 bool Mapping2D::ProcessScan(MultiScan2d::Ptr scan) { return ProcessScan(MultiToScan2d(scan)); }
 
 bool Mapping2D::ProcessScan(Scan2d::Ptr scan) {
+    /* 利用 scan 数据创建当前帧 */
     current_frame_ = std::make_shared<Frame>(scan);
     current_frame_->id_ = frame_id_++;
 
+    /* 利用上一帧在世界坐标系和子地图下的位姿大致估计当前帧在世界坐标系和子地图下的位姿 */
     if (last_frame_) {
         // set pose from last frame
         // current_frame_->pose_ = last_frame_->pose_;
@@ -39,7 +41,8 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan) {
         current_frame_->pose_submap_ = last_frame_->pose_submap_;
     }
 
-    // 利用scan matching来匹配地图，计算当前帧相对于世界坐标系的位姿
+    /* 利用当前帧的 pose_submap 和 scan 数据计算当前帧相对于世界坐标系的位姿 */
+    // 利用scan matching来匹配地图
     if (!first_scan_) {
         // 第一帧无法匹配，直接加入到occupancy map
         current_submap_->MatchScan(current_frame_);
@@ -158,7 +161,7 @@ cv::Mat Mapping2D::ShowGlobalMap(int max_size) {
     const float submap_resolution = 20.0;  // 子地图分辨率（1米多少个像素）
     const float submap_size = 50.0;        // 单个submap大小
 
-    /// 计算全局地图物理边界
+    /// 计算全局地图物理边界 动态扩容
     for (auto m : all_submaps_) {
         Vec2d c = m->GetPose().translation();
         if (top_left[0] > c[0] - submap_size / 2) {
